@@ -1,0 +1,37 @@
+{
+  "grammars": [
+    {
+      "name": "cobol",
+      "camelcase": "Cobol",
+      "scope": "source.cobol",
+      "file-types": [
+        ".cbl",
+        ".cob"
+      ],
+      "injection-regex": "^cobol$"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "a language parser for COBOL",
+    "authors": [
+      {
+        "name": "William Walker",
+        "email": "w_walker@icloud.com",
+        "url": "https://willswire.com/"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/willswire/tree-sitter-cobol"
+    }
+  },
+  "bindings": {
+    "c": true,
+    "go": true,
+    "node": true,
+    "python": true,
+    "rust": true,
+    "swift": true
+  }
+}
