@@ -1,0 +1,20 @@
+====================================
+Basic program
+====================================
+
+IDENTIFICATION DIVISION.
+PROGRAM-ID. HELLO.
+PROCEDURE DIVISION.
+    DISPLAY "HELLO".
+    STOP RUN.
+
+---
+
+(source_file
+  (identification_division
+    (program_id_paragraph (identifier)))
+  (procedure_division
+    (sentence (statement (display_statement (identifier_or_literal (string_literal)))))
+    (sentence (statement (stop_statement)))
+  )
+)

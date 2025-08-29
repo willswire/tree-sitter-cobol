@@ -1,145 +1,196 @@
-// COBOL Tree-sitter Grammar
+// Expanded COBOL Tree-sitter Grammar
+
+const ci = (word) => {
+  return token(new RegExp(word.replace(/\s+/g, "\\s+").replace(/-/g, "-"), "i"));
+};
+
 module.exports = grammar({
   name: "cobol",
 
   extras: ($) => [/\s+/, $.comment],
 
-  rules: {
-    source_file: ($) => repeat($.statement),
+  word: ($) => $.identifier,
 
-    statement: ($) =>
-      choice(
+  rules: {
+    source_file: ($) =>
+      seq(
         $.identification_division,
-        $.environment_division,
-        $.data_division,
+        optional($.environment_division),
+        optional($.data_division),
         $.procedure_division,
       ),
 
-    identification_division: ($) =>
-      seq("IDENTIFICATION DIVISION.", repeat($.identification_clause)),
+    // Identification Division -------------------------------------------------
 
-    identification_clause: ($) =>
-      choice(
-        seq("PROGRAM-ID.", $.identifier),
-        seq("AUTHOR.", $.string_literal),
+    identification_division: ($) =>
+      seq(
+        ci("IDENTIFICATION"),
+        ci("DIVISION"),
+        ".",
+        $.program_id_paragraph,
+        repeat($.identification_paragraph),
       ),
+
+    program_id_paragraph: ($) =>
+      seq(ci("PROGRAM-ID"), ".", field("program_name", $.identifier), "."),
+
+    identification_paragraph: ($) =>
+      choice(
+        seq(ci("AUTHOR"), ".", $.free_text, "."),
+        seq(ci("INSTALLATION"), ".", $.free_text, "."),
+        seq(ci("DATE-WRITTEN"), ".", $.free_text, "."),
+      ),
+
+    free_text: ($) => /[^\.\n]+/,
+
+    // Environment Division ----------------------------------------------------
 
     environment_division: ($) =>
-      seq("ENVIRONMENT DIVISION.", optional($.configuration_section)),
-
-    configuration_section: ($) =>
-      seq("CONFIGURATION SECTION.", repeat($.source_computer_clause)),
-
-    source_computer_clause: ($) => seq("SOURCE-COMPUTER.", $.identifier),
-
-    data_division: ($) => seq("DATA DIVISION.", repeat($.data_section)),
-
-    data_section: ($) => choice($.working_storage_section, $.file_section),
-
-    working_storage_section: ($) =>
-      seq("WORKING-STORAGE SECTION.", repeat($.data_description)),
-
-    file_section: ($) => seq("FILE SECTION.", repeat($.file_description)),
-
-    file_description: ($) =>
-      seq($.level_number, $.identifier, optional($.picture_clause)),
-
-    data_description: ($) =>
       seq(
-        $.level_number,
-        $.identifier,
-        optional($.picture_clause),
-        optional($.value_clause),
+        ci("ENVIRONMENT"),
+        ci("DIVISION"),
+        ".",
+        optional($.configuration_section),
+        optional($.input_output_section),
       ),
 
-    picture_clause: ($) => seq("PIC", $.picture_string),
+    configuration_section: ($) =>
+      seq(
+        ci("CONFIGURATION"),
+        ci("SECTION"),
+        ".",
+        repeat($.source_computer_paragraph),
+      ),
+
+    source_computer_paragraph: ($) =>
+      seq(ci("SOURCE-COMPUTER"), ".", field("name", $.identifier), "."),
+
+    input_output_section: ($) =>
+      seq(
+        ci("INPUT-OUTPUT"),
+        ci("SECTION"),
+        ".",
+        optional($.file_control_paragraph),
+      ),
+
+    file_control_paragraph: ($) =>
+      seq(ci("FILE-CONTROL"), ".", repeat($.select_statement)),
+
+    select_statement: ($) =>
+      seq(
+        ci("SELECT"),
+        field("file_name", $.identifier),
+        ci("ASSIGN"),
+        ci("TO"),
+        field("external_name", $.identifier_or_string),
+        ".",
+      ),
+
+    // Data Division -----------------------------------------------------------
+
+    data_division: ($) =>
+      seq(
+        ci("DATA"),
+        ci("DIVISION"),
+        ".",
+        repeat($.data_section),
+      ),
+
+    data_section: ($) =>
+      choice($.working_storage_section, $.file_section),
+
+    working_storage_section: ($) =>
+      seq(ci("WORKING-STORAGE"), ci("SECTION"), ".", repeat($.data_description_entry)),
+
+    file_section: ($) =>
+      seq(ci("FILE"), ci("SECTION"), ".", repeat($.data_description_entry)),
+
+    data_description_entry: ($) =>
+      seq(
+        field("level", $.level_number),
+        field("name", $.identifier),
+        optional($.picture_clause),
+        optional($.value_clause),
+        ".",
+      ),
+
+    picture_clause: ($) => seq(ci("PIC"), field("picture", $.picture_string)),
 
     value_clause: ($) =>
-      seq("VALUE", choice($.string_literal, $.number_literal)),
+      seq(ci("VALUE"), field("value", choice($.string_literal, $.number_literal))),
 
-    procedure_division: ($) => seq("PROCEDURE DIVISION.", repeat($.paragraph)),
+    // Procedure Division ------------------------------------------------------
 
-    paragraph: ($) => seq($.paragraph_label, repeat($.sentence)),
+    procedure_division: ($) =>
+      seq(
+        ci("PROCEDURE"),
+        ci("DIVISION"),
+        optional($.using_clause),
+        ".",
+        repeat($.sentence),
+      ),
 
-    paragraph_label: ($) => seq($.identifier, "."),
+    using_clause: ($) => seq(ci("USING"), repeat1($.identifier)),
 
-    sentence: ($) => seq(repeat1($.statement_line), "."),
+    sentence: ($) => seq(repeat1($.statement), "."),
 
-    statement_line: ($) =>
+    statement: ($) =>
       choice(
         $.move_statement,
         $.display_statement,
-        $.perform_statement,
-        $.if_statement,
-        $.index_line,
         $.stop_statement,
-        $.begin_statement,
+        $.if_statement,
+        $.perform_statement,
+        $.copy_statement,
       ),
 
-    move_statement: ($) => seq("MOVE", $.identifier, "TO", $.identifier),
+    move_statement: ($) =>
+      seq(ci("MOVE"), $.identifier_or_literal, ci("TO"), repeat1($.identifier)),
 
-    display_statement: ($) => seq("DISPLAY", $.string_literal),
+    display_statement: ($) => seq(ci("DISPLAY"), repeat1($.identifier_or_literal)),
 
-    perform_statement: ($) =>
-      seq("PERFORM", optional($.identifier), optional($.varying_clause)),
-
-    varying_clause: ($) =>
-      seq(
-        "VARYING",
-        $.identifier,
-        "FROM",
-        $.number_literal,
-        "BY",
-        $.number_literal,
-        "UNTIL",
-        $.identifier,
-        "=",
-        $.number_literal,
-      ),
+    stop_statement: ($) => seq(ci("STOP"), ci("RUN")),
 
     if_statement: ($) =>
       seq(
-        "IF",
-        $.identifier,
-        "EQUAL",
-        $.number_literal,
-        "PERFORM",
-        $.identifier,
+        ci("IF"),
+        field("condition", $.condition),
+        ci("THEN"),
+        field("then", $.statement),
+        optional(seq(ci("ELSE"), field("else", $.statement))),
+        ci("END-IF"),
       ),
 
-    stop_statement: ($) => seq("STOP", "RUN"),
+    condition: ($) =>
+      seq($.identifier_or_literal, $.relational_operator, $.identifier_or_literal),
 
-    begin_statement: ($) => seq("BEGIN", "."),
+    relational_operator: ($) =>
+      choice("=", ci("EQUAL"), "<", ">", "<=", ">=", "<>"),
 
-    index_line: ($) => seq($.number_literal, optional($.comment)),
+    perform_statement: ($) =>
+      seq(ci("PERFORM"), $.identifier),
 
-    comment: ($) => token(/\*[^\n]*/),
+    copy_statement: ($) =>
+      seq(ci("COPY"), field("copybook", $.identifier_or_string), "."),
 
-    identifier: ($) => /[a-zA-Z_][a-zA-Z0-9_-]*/,
+    // Lexical tokens ---------------------------------------------------------
 
-    reserved_word: ($) =>
-      choice(
-        "MOVE",
-        "TO",
-        "DISPLAY",
-        "VALUE",
-        "PIC",
-        "PERFORM",
-        "IF",
-        "EQUAL",
-        "STOP",
-        "RUN",
-        "BEGIN",
-        "VARYING",
-        "UNTIL",
-      ),
+    comment: ($) => token(/\*>[^\n]*|\*[^\n]*/),
 
-    level_number: ($) => /(?:01|[0-4][0-9]|77|88)/,
+    identifier: ($) =>
+      token(/[A-Za-z](?:[A-Za-z0-9_-]*[A-Za-z0-9])?/),
 
-    picture_string: ($) => /[AX9]+(?:\([0-9]+\))?/,
+    identifier_or_literal: ($) => choice($.identifier, $.string_literal, $.number_literal),
 
-    string_literal: ($) => /".*?"|'.*?'/,
+    identifier_or_string: ($) => choice($.identifier, $.string_literal),
 
-    number_literal: ($) => /[0-9]+/,
+    level_number: ($) => token(/(?:0[1-9]|[1-4][0-9]|77|88)/),
+
+    picture_string: ($) => token(/[AX9V()0-9]+/),
+
+    string_literal: ($) => token(/"[^"]*"|'[^']*'/),
+
+    number_literal: ($) => token(/\d+/),
   },
 });
+
