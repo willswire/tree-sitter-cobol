@@ -171,7 +171,7 @@ module.exports = grammar({
       seq(ci("PERFORM"), $.identifier),
 
     copy_statement: ($) =>
-      seq(ci("COPY"), field("copybook", $.identifier_or_string), "."),
+      seq(ci("COPY"), field("copybook", $.identifier_or_string)),
 
     // Lexical tokens ---------------------------------------------------------
 

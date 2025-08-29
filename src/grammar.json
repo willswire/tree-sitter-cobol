@@ -963,10 +963,6 @@
             "type": "SYMBOL",
             "name": "identifier_or_string"
           }
-        },
-        {
-          "type": "STRING",
-          "value": "."
         }
       ]
     },
