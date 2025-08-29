@@ -1,0 +1,20 @@
+====================================
+COPY statement
+====================================
+
+IDENTIFICATION DIVISION.
+PROGRAM-ID. COPYTEST.
+PROCEDURE DIVISION.
+    COPY MYBOOK.
+    STOP RUN.
+
+---
+
+(source_file
+  (identification_division
+    (program_id_paragraph (identifier)))
+  (procedure_division
+    (sentence (statement (copy_statement (identifier_or_string (identifier)))))
+    (sentence (statement (stop_statement)))
+  )
+)
